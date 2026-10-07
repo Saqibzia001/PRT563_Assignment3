@@ -1,0 +1,88 @@
+// PRT563 ASSIGNMENT 3 - FINAL LIVE VERIFICATION
+// Run AFTER import.txt succeeds on a fresh dedicated database.
+// Zero is expected for all violation checks.
+
+// 1. Node counts
+MATCH (n:Customer) RETURN count(n) AS CustomerNodes;
+MATCH (n:Address) RETURN count(n) AS AddressNodes;
+MATCH (n:Store) RETURN count(n) AS StoreNodes;
+MATCH (n:Driver) RETURN count(n) AS DriverNodes;
+MATCH (n:MenuCategory) RETURN count(n) AS MenuCategoryNodes;
+MATCH (n:MenuItem) RETURN count(n) AS MenuItemNodes;
+MATCH (n:MenuVariant) RETURN count(n) AS MenuVariantNodes;
+MATCH (n:Order) RETURN count(n) AS OrderNodes;
+MATCH (n:Payment) RETURN count(n) AS PaymentNodes;
+MATCH (n:Delivery) RETURN count(n) AS DeliveryNodes;
+MATCH ()-[r:CONTAINS]->() RETURN count(r) AS ContainsRelationships;
+
+// 2. Operational relationship count before derived analytics
+MATCH ()-[r]->()
+WHERE type(r) IN ['HAS_ADDRESS','PLACES','PROCESSES','ASSOCIATED_WITH','CLASSIFIES',
+                  'HAS_VARIANT','CONTAINS','SETTLED_BY','FULFILLED_BY','PERFORMS','DESTINATION_FOR']
+RETURN count(r) AS OperationalRelationships;
+
+// 3. Subtype exclusivity
+MATCH (o:Order)
+WHERE o:PickupOrder AND o:DeliveryOrder
+RETURN count(o) AS OrdersWithBothSubtypeLabels;
+
+// 4. Delivery orders must have fulfilment
+MATCH (o:Order:DeliveryOrder)
+WHERE NOT (o)-[:FULFILLED_BY]->(:Delivery)
+RETURN count(o) AS DeliveryOrdersWithoutFulfilment;
+
+// 5. Pickup orders must not have fulfilment
+MATCH (o:Order:PickupOrder)-[:FULFILLED_BY]->(:Delivery)
+RETURN count(o) AS PickupOrdersWithFulfilment;
+
+// 6. CONTAINS data quality
+MATCH ()-[r:CONTAINS]->()
+WHERE r.quantity <= 0 OR r.unitPrice IS NULL
+RETURN count(r) AS InvalidContainsRows;
+
+// 7. Duplicate order-line keys
+MATCH (o:Order)-[r:CONTAINS]->()
+WITH o.orderId AS OrderID, r.lineNumber AS LineNumber, count(*) AS Copies
+WHERE Copies > 1
+RETURN count(*) AS DuplicateOrderLineKeys;
+
+// 8. One payment per order
+MATCH (o:Order)
+OPTIONAL MATCH (o)-[:SETTLED_BY]->(p:Payment)
+WITH o, count(p) AS PaymentCount
+WHERE PaymentCount <> 1
+RETURN count(o) AS OrdersWithIncorrectPaymentCount;
+
+// 9. One delivery per delivery order
+MATCH (o:Order:DeliveryOrder)
+OPTIONAL MATCH (o)-[:FULFILLED_BY]->(d:Delivery)
+WITH o, count(d) AS DeliveryCount
+WHERE DeliveryCount <> 1
+RETURN count(o) AS DeliveryOrdersWithIncorrectDeliveryCount;
+
+// 10. Behaviour-vector quality
+MATCH (c:Customer)
+WHERE c.behaviourVector IS NULL OR size(c.behaviourVector) <> 14
+RETURN count(c) AS CustomersWithInvalidBehaviourVector;
+
+// 11. Analytical relationship counts
+MATCH ()-[r:PURCHASED]->()
+RETURN count(r) AS PurchasedRelationships;
+
+MATCH ()-[r:HAS_AFFINITY_FEATURE]->()
+RETURN count(r) AS AffinityFeatureRelationships;
+
+// 12. Schema and GDS
+SHOW CONSTRAINTS;
+SHOW INDEXES;
+RETURN gds.version() AS GDSVersion;
+
+// Expected violation results:
+// OrdersWithBothSubtypeLabels = 0
+// DeliveryOrdersWithoutFulfilment = 0
+// PickupOrdersWithFulfilment = 0
+// InvalidContainsRows = 0
+// DuplicateOrderLineKeys = 0
+// OrdersWithIncorrectPaymentCount = 0
+// DeliveryOrdersWithIncorrectDeliveryCount = 0
+// CustomersWithInvalidBehaviourVector = 0
