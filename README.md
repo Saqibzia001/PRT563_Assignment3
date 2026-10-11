@@ -38,9 +38,6 @@
 8. Capture genuine Neo4j/GDS screenshots.
 9. Reconcile live values with the Word report. Live output is authoritative.
 
-Note: `import.txt` can be run as one multi-statement script. For `live_verification.txt`, `queries.txt` and `gds_algorithms.txt`, run one statement at a time; Neo4j Browser/Desktop shows only execution summaries, not result tables, when several statements run together.
-
-Tested on Neo4j Desktop 2.2.1 (Cypher 25) with the Graph Data Science plugin.
 
 ## Analytics alignment
 - Centrality uses the operational graph `operationalCentrality` and runs Degree, Betweenness, Closeness and unweighted PageRank.
