@@ -1,8 +1,5 @@
 # PRT563 Assignment 3 - Neo4j Graph Database Migration
 
-## Final repository purpose
-This repository contains the reproducible Neo4j implementation for PRT563 Assignment 3 using the final Assignment 2-derived dataset.
-
 ## Dataset baseline
 - 10 Customers
 - 10 Addresses
@@ -57,5 +54,4 @@ Tested on Neo4j Desktop 2.2.1 (Cypher 25) with the Graph Data Science plugin.
 - `CONTAINS` stores `lineNumber`, `variantId`, `quantity`, `unitPrice` and `specialInstructions` as relationship properties.
 - `PURCHASED`, `AffinityFeature` and `behaviourVector` are derived analytical layers; they do not replace the operational graph.
 
-## Security
-Do not commit passwords, personal access tokens, API keys or other secrets.
+
