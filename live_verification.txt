@@ -1,7 +1,3 @@
-// PRT563 ASSIGNMENT 3 - FINAL LIVE VERIFICATION
-// Run AFTER import.txt succeeds on a fresh dedicated database.
-// Zero is expected for all violation checks.
-
 // 1. Node counts
 MATCH (n:Customer) RETURN count(n) AS CustomerNodes;
 MATCH (n:Address) RETURN count(n) AS AddressNodes;
@@ -76,13 +72,3 @@ RETURN count(r) AS AffinityFeatureRelationships;
 SHOW CONSTRAINTS;
 SHOW INDEXES;
 RETURN gds.version() AS GDSVersion;
-
-// Expected violation results:
-// OrdersWithBothSubtypeLabels = 0
-// DeliveryOrdersWithoutFulfilment = 0
-// PickupOrdersWithFulfilment = 0
-// InvalidContainsRows = 0
-// DuplicateOrderLineKeys = 0
-// OrdersWithIncorrectPaymentCount = 0
-// DeliveryOrdersWithIncorrectDeliveryCount = 0
-// CustomersWithInvalidBehaviourVector = 0
