@@ -1,0 +1,350 @@
+// 0. RESET THE DEDICATED ASSIGNMENT DATABASE
+MATCH (n)
+DETACH DELETE n;
+
+// 1. UNIQUE IDENTIFIER CONSTRAINTS
+CREATE CONSTRAINT customer_id IF NOT EXISTS
+FOR (n:Customer) REQUIRE n.customerId IS UNIQUE;
+
+CREATE CONSTRAINT address_id IF NOT EXISTS
+FOR (n:Address) REQUIRE n.addressId IS UNIQUE;
+
+CREATE CONSTRAINT store_id IF NOT EXISTS
+FOR (n:Store) REQUIRE n.storeId IS UNIQUE;
+
+CREATE CONSTRAINT driver_id IF NOT EXISTS
+FOR (n:Driver) REQUIRE n.driverId IS UNIQUE;
+
+CREATE CONSTRAINT category_id IF NOT EXISTS
+FOR (n:MenuCategory) REQUIRE n.categoryId IS UNIQUE;
+
+CREATE CONSTRAINT menu_item_id IF NOT EXISTS
+FOR (n:MenuItem) REQUIRE n.menuItemId IS UNIQUE;
+
+CREATE CONSTRAINT variant_id IF NOT EXISTS
+FOR (n:MenuVariant) REQUIRE n.variantId IS UNIQUE;
+
+CREATE CONSTRAINT order_id IF NOT EXISTS
+FOR (n:Order) REQUIRE n.orderId IS UNIQUE;
+
+CREATE CONSTRAINT payment_id IF NOT EXISTS
+FOR (n:Payment) REQUIRE n.paymentId IS UNIQUE;
+
+CREATE CONSTRAINT delivery_id IF NOT EXISTS
+FOR (n:Delivery) REQUIRE n.deliveryId IS UNIQUE;
+
+// 2. NODES - CUSTOMER
+LOAD CSV WITH HEADERS FROM 'file:///customers.csv' AS row
+MERGE (c:Customer {customerId: toInteger(row.CustomerID)})
+SET c.firstName = row.FirstName,
+    c.lastName = row.LastName,
+    c.email = row.Email,
+    c.phone = row.Phone,
+    c.loyaltyPoints = toInteger(row.LoyaltyPoints);
+
+// 3. NODES - ADDRESS
+LOAD CSV WITH HEADERS FROM 'file:///addresses.csv' AS row
+MERGE (a:Address {addressId: toInteger(row.AddressID)})
+SET a.customerId = toInteger(row.CustomerID),
+    a.streetAddress = row.StreetAddress,
+    a.suburb = row.Suburb,
+    a.state = row.State,
+    a.postcode = row.Postcode;
+
+// 4. NODES - STORE
+LOAD CSV WITH HEADERS FROM 'file:///stores.csv' AS row
+MERGE (s:Store {storeId: toInteger(row.StoreID)})
+SET s.storeName = row.StoreName,
+    s.streetAddress = row.StreetAddress,
+    s.suburb = row.Suburb,
+    s.state = row.State,
+    s.postcode = row.Postcode,
+    s.phone = row.Phone;
+
+// 5. NODES - DRIVER
+LOAD CSV WITH HEADERS FROM 'file:///drivers.csv' AS row
+MERGE (d:Driver {driverId: toInteger(row.DriverID)})
+SET d.storeId = toInteger(row.StoreID),
+    d.firstName = row.FirstName,
+    d.lastName = row.LastName,
+    d.phone = row.Phone,
+    d.driverStatus = row.DriverStatus;
+
+// 6. NODES - MENU CATEGORY
+LOAD CSV WITH HEADERS FROM 'file:///categories.csv' AS row
+MERGE (c:MenuCategory {categoryId: toInteger(row.CategoryID)})
+SET c.categoryName = row.CategoryName,
+    c.description = row.Description;
+
+// 7. NODES - MENU ITEM
+LOAD CSV WITH HEADERS FROM 'file:///menu_items.csv' AS row
+MERGE (m:MenuItem {menuItemId: toInteger(row.MenuItemID)})
+SET m.categoryId = toInteger(row.CategoryID),
+    m.itemName = row.ItemName,
+    m.description = row.Description,
+    m.availabilityStatus = row.AvailabilityStatus;
+
+// 8. NODES - MENU VARIANT
+LOAD CSV WITH HEADERS FROM 'file:///menu_variants.csv' AS row
+MERGE (v:MenuVariant {variantId: toInteger(row.VariantID)})
+SET v.menuItemId = toInteger(row.MenuItemID),
+    v.size = row.Size,
+    v.crustType = CASE
+        WHEN trim(row.CrustType) = '' THEN null
+        ELSE row.CrustType
+    END,
+    v.currentPrice = toFloat(row.CurrentPrice),
+    v.availabilityStatus = row.AvailabilityStatus;
+
+// 9. NODES - ORDER
+LOAD CSV WITH HEADERS FROM 'file:///orders.csv' AS row
+MERGE (o:Order {orderId: toInteger(row.OrderID)})
+SET o.customerId = toInteger(row.CustomerID),
+    o.storeId = toInteger(row.StoreID),
+    o.orderDateTime = datetime(replace(row.OrderDateTime, ' ', 'T')),
+    o.orderStatus = row.OrderStatus;
+
+// 10. ORDER SUBTYPE LABELS + CONVENIENCE FULFILMENT TYPE
+LOAD CSV WITH HEADERS FROM 'file:///pickup_orders.csv' AS row
+MATCH (o:Order {orderId: toInteger(row.OrderID)})
+SET o:PickupOrder;
+
+LOAD CSV WITH HEADERS FROM 'file:///delivery_orders.csv' AS row
+MATCH (o:Order {orderId: toInteger(row.OrderID)})
+SET o:DeliveryOrder;
+
+MATCH (o:Order)
+SET o.fulfilmentType = CASE
+    WHEN o:PickupOrder THEN 'Pickup'
+    WHEN o:DeliveryOrder THEN 'Delivery'
+    ELSE null
+END;
+
+// 11. NODES - PAYMENT
+LOAD CSV WITH HEADERS FROM 'file:///payments.csv' AS row
+MERGE (p:Payment {paymentId: toInteger(row.PaymentID)})
+SET p.orderId = toInteger(row.OrderID),
+    p.paymentMethod = row.PaymentMethod,
+    p.paymentAmount = toFloat(row.PaymentAmount),
+    p.paymentStatus = row.PaymentStatus,
+    p.paymentDateTime = datetime(replace(row.PaymentDateTime, ' ', 'T')),
+    p.voucherCode = CASE
+        WHEN trim(row.VoucherCode) = '' THEN null
+        ELSE row.VoucherCode
+    END,
+    p.priorityFee = toFloat(row.PriorityFee);
+
+// 12. NODES - DELIVERY
+LOAD CSV WITH HEADERS FROM 'file:///deliveries.csv' AS row
+MERGE (d:Delivery {deliveryId: toInteger(row.DeliveryID)})
+SET d.orderId = toInteger(row.OrderID),
+    d.driverId = toInteger(row.DriverID),
+    d.addressId = toInteger(row.AddressID),
+    d.trackerStatus = row.TrackerStatus,
+    d.dispatchTime = datetime(replace(row.DispatchTime, ' ', 'T')),
+    d.deliveredTime = CASE
+        WHEN trim(row.DeliveredTime) = '' THEN null
+        ELSE datetime(replace(row.DeliveredTime, ' ', 'T'))
+    END,
+    d.estimatedDeliveryTime = datetime(replace(row.EstimatedDeliveryTime, ' ', 'T'));
+
+// 13. CUSTOMER -> ADDRESS
+LOAD CSV WITH HEADERS FROM 'file:///addresses.csv' AS row
+MATCH (c:Customer {customerId: toInteger(row.CustomerID)}),
+      (a:Address {addressId: toInteger(row.AddressID)})
+MERGE (c)-[:HAS_ADDRESS]->(a);
+
+// 14. CUSTOMER -> ORDER AND STORE -> ORDER
+LOAD CSV WITH HEADERS FROM 'file:///orders.csv' AS row
+MATCH (c:Customer {customerId: toInteger(row.CustomerID)}),
+      (o:Order {orderId: toInteger(row.OrderID)}),
+      (s:Store {storeId: toInteger(row.StoreID)})
+MERGE (c)-[:PLACES]->(o)
+MERGE (s)-[:PROCESSES]->(o);
+
+// 15. STORE -> DRIVER
+LOAD CSV WITH HEADERS FROM 'file:///drivers.csv' AS row
+MATCH (s:Store {storeId: toInteger(row.StoreID)}),
+      (d:Driver {driverId: toInteger(row.DriverID)})
+MERGE (s)-[:ASSOCIATED_WITH]->(d);
+
+// 16. CATEGORY -> MENU ITEM
+LOAD CSV WITH HEADERS FROM 'file:///menu_items.csv' AS row
+MATCH (c:MenuCategory {categoryId: toInteger(row.CategoryID)}),
+      (m:MenuItem {menuItemId: toInteger(row.MenuItemID)})
+MERGE (c)-[:CLASSIFIES]->(m);
+
+// 17. MENU ITEM -> VARIANT
+LOAD CSV WITH HEADERS FROM 'file:///menu_variants.csv' AS row
+MATCH (m:MenuItem {menuItemId: toInteger(row.MenuItemID)}),
+      (v:MenuVariant {variantId: toInteger(row.VariantID)})
+MERGE (m)-[:HAS_VARIANT]->(v);
+
+// 18. ORDER -> CONTAINS -> MENU VARIANT
+LOAD CSV WITH HEADERS FROM 'file:///order_items.csv' AS row
+MATCH (o:Order {orderId: toInteger(row.OrderID)}),
+      (v:MenuVariant {variantId: toInteger(row.VariantID)})
+MERGE (o)-[r:CONTAINS {
+    lineNumber: toInteger(row.LineNumber),
+    variantId: toInteger(row.VariantID)
+}]->(v)
+SET r.quantity = toInteger(row.Quantity),
+    r.unitPrice = toFloat(row.UnitPrice),
+    r.specialInstructions = CASE
+        WHEN trim(row.SpecialInstructions) = '' THEN null
+        ELSE row.SpecialInstructions
+    END;
+
+// 19. ORDER -> PAYMENT
+LOAD CSV WITH HEADERS FROM 'file:///payments.csv' AS row
+MATCH (o:Order {orderId: toInteger(row.OrderID)}),
+      (p:Payment {paymentId: toInteger(row.PaymentID)})
+MERGE (o)-[:SETTLED_BY]->(p);
+
+// 20. DELIVERY RELATIONSHIPS
+LOAD CSV WITH HEADERS FROM 'file:///deliveries.csv' AS row
+MATCH (o:Order {orderId: toInteger(row.OrderID)}),
+      (d:Delivery {deliveryId: toInteger(row.DeliveryID)}),
+      (dr:Driver {driverId: toInteger(row.DriverID)}),
+      (a:Address {addressId: toInteger(row.AddressID)})
+MERGE (o)-[:FULFILLED_BY]->(d)
+MERGE (dr)-[:PERFORMS]->(d)
+MERGE (a)-[:DESTINATION_FOR]->(d);
+
+// 21. OPERATIONAL INDEXES
+CREATE RANGE INDEX menu_item_name IF NOT EXISTS
+FOR (m:MenuItem) ON (m.itemName);
+
+CREATE RANGE INDEX order_status IF NOT EXISTS
+FOR (o:Order) ON (o.orderStatus);
+
+CREATE RANGE INDEX payment_status IF NOT EXISTS
+FOR (p:Payment) ON (p.paymentStatus);
+
+CREATE RANGE INDEX delivery_status IF NOT EXISTS
+FOR (d:Delivery) ON (d.trackerStatus);
+
+// 22. ANALYTICAL PURCHASED RELATIONSHIPS
+MATCH (c:Customer)-[:PLACES]->(o:Order)-[line:CONTAINS]->(v:MenuVariant)
+WITH c, v, sum(line.quantity) AS totalQuantity
+MERGE (c)-[p:PURCHASED]->(v)
+SET p.quantity = totalQuantity;
+
+// 23. ANALYTICAL AFFINITY FEATURES
+MATCH (c:Customer)-[:PLACES]->(:Order)-[:CONTAINS]->(:MenuVariant)
+      <-[:HAS_VARIANT]-(:MenuItem)<-[:CLASSIFIES]-(cat:MenuCategory)
+WITH DISTINCT c, cat
+MERGE (f:AffinityFeature {featureKey: 'CATEGORY:' + toString(cat.categoryId)})
+SET f.featureType = 'Category',
+    f.featureValue = cat.categoryName
+MERGE (c)-[:HAS_AFFINITY_FEATURE]->(f);
+
+MATCH (c:Customer)-[:PLACES]->(o:Order)
+WITH DISTINCT c, o.orderStatus AS status
+MERGE (f:AffinityFeature {featureKey: 'STATUS:' + status})
+SET f.featureType = 'OrderStatus',
+    f.featureValue = status
+MERGE (c)-[:HAS_AFFINITY_FEATURE]->(f);
+
+// 24. 14-DIMENSION CUSTOMER BEHAVIOUR VECTOR
+MATCH (c:Customer)
+CALL {
+    WITH c
+    OPTIONAL MATCH
+        (c)-[:PLACES]->(:Order)-[line:CONTAINS]->(:MenuVariant)
+        <-[:HAS_VARIANT]-(:MenuItem)<-[:CLASSIFIES]-(cat:MenuCategory)
+    RETURN
+        sum(CASE WHEN cat.categoryId = 1 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat1,
+        sum(CASE WHEN cat.categoryId = 2 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat2,
+        sum(CASE WHEN cat.categoryId = 3 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat3,
+        sum(CASE WHEN cat.categoryId = 4 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat4,
+        sum(CASE WHEN cat.categoryId = 5 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat5,
+        sum(CASE WHEN cat.categoryId = 6 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat6,
+        sum(CASE WHEN cat.categoryId = 7 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat7,
+        sum(CASE WHEN cat.categoryId = 8 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat8,
+        sum(CASE WHEN cat.categoryId = 9 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat9,
+        sum(CASE WHEN cat.categoryId = 10 THEN line.quantity * line.unitPrice ELSE 0 END) AS cat10
+}
+CALL {
+    WITH c
+    OPTIONAL MATCH (c)-[:PLACES]->(o:Order)
+    RETURN
+        count(CASE WHEN o.orderStatus = 'Completed' THEN 1 END) AS completed,
+        count(CASE WHEN o.orderStatus = 'Preparing' THEN 1 END) AS preparing,
+        count(CASE WHEN o.orderStatus = 'Ready for Pickup' THEN 1 END) AS readyForPickup,
+        count(CASE WHEN o.orderStatus = 'Out for Delivery' THEN 1 END) AS outForDelivery
+}
+SET c.behaviourVector = [
+    toFloat(coalesce(cat1, 0)),
+    toFloat(coalesce(cat2, 0)),
+    toFloat(coalesce(cat3, 0)),
+    toFloat(coalesce(cat4, 0)),
+    toFloat(coalesce(cat5, 0)),
+    toFloat(coalesce(cat6, 0)),
+    toFloat(coalesce(cat7, 0)),
+    toFloat(coalesce(cat8, 0)),
+    toFloat(coalesce(cat9, 0)),
+    toFloat(coalesce(cat10, 0)),
+    toFloat(completed),
+    toFloat(preparing),
+    toFloat(readyForPickup),
+    toFloat(outForDelivery)
+];
+
+// 25. FINAL SINGLE-RESULT VALIDATION
+MATCH (c:Customer)
+WITH count(c) AS Customers
+MATCH (a:Address)
+WITH Customers, count(a) AS Addresses
+MATCH (s:Store)
+WITH Customers, Addresses, count(s) AS Stores
+MATCH (d:Driver)
+WITH Customers, Addresses, Stores, count(d) AS Drivers
+MATCH (mc:MenuCategory)
+WITH Customers, Addresses, Stores, Drivers, count(mc) AS MenuCategories
+MATCH (mi:MenuItem)
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, count(mi) AS MenuItems
+MATCH (mv:MenuVariant)
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, count(mv) AS MenuVariants
+MATCH (o:Order)
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, count(o) AS Orders
+MATCH (p:Payment)
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, count(p) AS Payments
+MATCH (d:Delivery)
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, Payments, count(d) AS Deliveries
+OPTIONAL MATCH ()-[contains:CONTAINS]->()
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, Payments, Deliveries, count(contains) AS ContainsRelationships
+OPTIONAL MATCH (badBoth:Order)
+WHERE badBoth:PickupOrder AND badBoth:DeliveryOrder
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, Payments, Deliveries, ContainsRelationships, count(badBoth) AS OrdersWithBothSubtypeLabels
+OPTIONAL MATCH (badDelivery:Order:DeliveryOrder)
+WHERE NOT (badDelivery)-[:FULFILLED_BY]->(:Delivery)
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, Payments, Deliveries, ContainsRelationships, OrdersWithBothSubtypeLabels, count(badDelivery) AS DeliveryOrdersWithoutFulfilment
+OPTIONAL MATCH (badPickup:Order:PickupOrder)-[:FULFILLED_BY]->(:Delivery)
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, Payments, Deliveries, ContainsRelationships, OrdersWithBothSubtypeLabels, DeliveryOrdersWithoutFulfilment, count(badPickup) AS PickupOrdersWithFulfilment
+OPTIONAL MATCH ()-[badLine:CONTAINS]->()
+WHERE badLine.quantity <= 0 OR badLine.unitPrice IS NULL
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, Payments, Deliveries, ContainsRelationships, OrdersWithBothSubtypeLabels, DeliveryOrdersWithoutFulfilment, PickupOrdersWithFulfilment, count(badLine) AS InvalidContainsRows
+CALL {
+    OPTIONAL MATCH (dupOrder:Order)-[dupLine:CONTAINS]->()
+    WITH dupOrder.orderId AS orderId, dupLine.lineNumber AS lineNumber, count(dupLine) AS copies
+    WHERE copies > 1
+    RETURN count(*) AS DuplicateOrderLineKeys
+}
+WITH Customers, Addresses, Stores, Drivers, MenuCategories, MenuItems, MenuVariants, Orders, Payments, Deliveries, ContainsRelationships, OrdersWithBothSubtypeLabels, DeliveryOrdersWithoutFulfilment, PickupOrdersWithFulfilment, InvalidContainsRows, DuplicateOrderLineKeys
+RETURN Customers,
+       Addresses,
+       Stores,
+       Drivers,
+       MenuCategories,
+       MenuItems,
+       MenuVariants,
+       Orders,
+       Payments,
+       Deliveries,
+       ContainsRelationships,
+       OrdersWithBothSubtypeLabels,
+       DeliveryOrdersWithoutFulfilment,
+       PickupOrdersWithFulfilment,
+       InvalidContainsRows,
+       DuplicateOrderLineKeys;
