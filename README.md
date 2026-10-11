@@ -1,4 +1,4 @@
-# PRT563 Assignment 3 - Neo4j Graph Database Migration
+# PRT563 Assignment 4 - Neo4j Graph Database Migration
 
 ## Dataset baseline
 - 10 Customers
