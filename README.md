@@ -35,9 +35,6 @@
 5. Run `live_verification.txt` and confirm expected counts and zero violation counts.
 6. Run Q1-Q4 from `queries.txt` separately.
 7. Run the centrality and similarity sections of `gds_algorithms.txt` in order.
-8. Capture genuine Neo4j/GDS screenshots.
-9. Reconcile live values with the Word report. Live output is authoritative.
-
 
 ## Analytics alignment
 - Centrality uses the operational graph `operationalCentrality` and runs Degree, Betweenness, Closeness and unweighted PageRank.
@@ -45,10 +42,6 @@
 - Filtered Node Similarity uses `customerAffinitySimilarity` with category and order-status affinity features and Overlap similarity.
 - KNN uses the 14-dimensional `Customer.behaviourVector` with cosine similarity, `topK: 3`, `randomSeed: 42`, `concurrency: 1`, `sampleRate: 1.0` and `deltaThreshold: 0.0`.
 
-## Important modelling decisions
-- `orders.csv` has no `FulfilmentType` column. `PickupOrder` and `DeliveryOrder` labels are derived from the two subtype CSV files.
-- `CLASSIFIES` direction is `MenuCategory -> MenuItem`.
-- `CONTAINS` stores `lineNumber`, `variantId`, `quantity`, `unitPrice` and `specialInstructions` as relationship properties.
-- `PURCHASED`, `AffinityFeature` and `behaviourVector` are derived analytical layers; they do not replace the operational graph.
+
 
 
