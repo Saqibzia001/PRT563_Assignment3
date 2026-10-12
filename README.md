@@ -20,7 +20,6 @@
 - `queries.txt` - four Cypher use cases.
 - `gds_algorithms.txt` - four centrality algorithms and three similarity experiments.
 - `live_verification.txt` - migration and integrity checks.
-- `FINAL_CHECKLIST.md` - concise execution and submission checklist.
 - `csv/` - all 13 source CSV files.
 - `source/Assignment2_SQL_source.sql` - Assignment 2 source SQL for traceability.
 
