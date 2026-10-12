@@ -35,11 +35,7 @@
 6. Run Q1-Q4 from `queries.txt` separately.
 7. Run the centrality and similarity sections of `gds_algorithms.txt` in order.
 
-## Analytics alignment
-- Centrality uses the operational graph `operationalCentrality` and runs Degree, Betweenness, Closeness and unweighted PageRank.
-- Jaccard uses `customerVariantSimilarity`, a Customer-to-MenuVariant projection derived from the transaction-level graph.
-- Filtered Node Similarity uses `customerAffinitySimilarity` with category and order-status affinity features and Overlap similarity.
-- KNN uses the 14-dimensional `Customer.behaviourVector` with cosine similarity, `topK: 3`, `randomSeed: 42`, `concurrency: 1`, `sampleRate: 1.0` and `deltaThreshold: 0.0`.
+.
 
 
 
